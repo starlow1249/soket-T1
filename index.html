@@ -2,59 +2,63 @@
 <html lang="he">
 <head>
   <meta charset="UTF-8">
-  <title>כניסה עם סיסמה</title>
+  <title>כניסה למצגות</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin-top: 100px;
-    }
-    input, button {
-      padding: 10px;
-      font-size: 16px;
-      margin: 5px;
-    }
-    .error {
-      color: red;
-      margin-top: 10px;
-    }
+    body { font-family: Arial, sans-serif; direction: rtl; text-align: center; margin: 30px; }
+    input, button { padding: 10px; margin: 10px; font-size: 16px; }
+    #results a { display: block; margin: 10px; font-weight: bold; }
   </style>
 </head>
 <body>
-  <h2>אנא הזן סיסמה כדי להיכנס</h2>
-  <input type="password" id="passwordInput" placeholder="סיסמה">
-  <button onclick="checkPassword()">כניסה</button>
-  <div class="error" id="errorMessage"></div>
+  <h2>כניסה למצגות לפי פרשה</h2>
+  <input type="password" id="password" placeholder="הכנס סיסמה">
+  <input type="text" id="parasha" placeholder="הכנס שם פרשה">
+  <button onclick="checkAccess()">הצג מסמכים</button>
+
+  <div id="results"></div>
 
   <script>
-    const API_KEY = "AIzaSyClmkLxcxXdKkrmGVY2fjTsVgf31RcMS_4";
-    const SHEET_ID = "1YWCM1uctEsK-504WkMSdsBm5y56GBwRB3Hy_r1OYXuI";
-    const SHEET_RANGE = "A1:A100";
+    const sheetId = '1YWCM1uctEsK-504WkMSdsBm5y56GBwRB3Hy_r1OYXuI';
+    const apiKey = 'AIzaSyClmkLxcxXdKkrmGVY2fjTsVgf31RcMS_4';
+    const range = 'A2:D100';
 
-    async function checkPassword() {
-      const inputPassword = document.getElementById("passwordInput").value;
-      const errorDiv = document.getElementById("errorMessage");
-      errorDiv.textContent = ""; // נקה שגיאות קודמות
+    async function checkAccess() {
+      const inputPassword = document.getElementById('password').value.trim();
+      const inputParasha = document.getElementById('parasha').value.trim();
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '';
 
       try {
-        const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_RANGE}?key=${API_KEY}`);
-
-        if (!response.ok) {
-          throw new Error("שגיאה בחיבור ל-Google Sheets. ודא שהקובץ ציבורי.");
-        }
-
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
+        const response = await fetch(url);
         const data = await response.json();
-        const passwords = (data.values || []).flat();
 
-        if (passwords.includes(inputPassword)) {
-          window.location.href = "https://drive.google.com/file/d/1lQ9nD2bPksL8fD4fIrl6jRKSOhTHcsd-/view";
-        } else {
-          errorDiv.textContent = "סיסמה שגויה. נסה שוב.";
+        const rows = data.values;
+        const password = rows[0][0];
+
+        if (inputPassword !== password) {
+          resultsDiv.innerHTML = '<p style="color:red;">סיסמה שגויה</p>';
+          return;
         }
 
+        const matchingDocs = rows.filter(row => row[1] === inputParasha);
+
+        if (matchingDocs.length === 0) {
+          resultsDiv.innerHTML = '<p>לא נמצאו מסמכים לפרשה הזו.</p>';
+        } else {
+          matchingDocs.forEach(row => {
+            const docName = row[2];
+            const docLink = row[3];
+            const link = document.createElement('a');
+            link.href = docLink;
+            link.textContent = docName;
+            link.target = '_blank';
+            resultsDiv.appendChild(link);
+          });
+        }
       } catch (error) {
+        resultsDiv.innerHTML = '<p style="color:red;">אירעה שגיאה בטעינת הנתונים.</p>';
         console.error(error);
-        errorDiv.textContent = "אירעה שגיאה. ודא שהגיליון פתוח לצפייה וכל הפרטים נכונים.";
       }
     }
   </script>
